@@ -92,6 +92,7 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
         return
 
     def disable(self):
+        assert self.notify.debugStateCall(self)
         self.ignore(self.uniqueName('enterFishingSpotSphere'))
         self.setOccupied(0)
         self.avId = 0
@@ -137,6 +138,7 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
         DistributedObject.DistributedObject.generate(self)
 
     def announceGenerate(self):
+        assert self.notify.debugStateCall(self)
         DistributedObject.DistributedObject.announceGenerate(self)
         self.nodePath.reparentTo(self.getParentNodePath())
         self.accept(self.uniqueName('enterFishingSpotSphere'), self.__handleEnterSphere)
@@ -195,6 +197,7 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
         self.angleNP.setH(render, self.nodePath.getH(render))
 
     def setOccupied(self, avId):
+        self.notify.debug("setting occupied")
         if self.av != None:
             if not self.av.isEmpty():
                 self.__dropPole()
@@ -305,6 +308,8 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
             self.av.setPosHpr(0, 0, 0, 0, 0, 0)
 
     def __holdPole(self):
+        assert self.notify.debugStateCall(self)
+        self.notify.debug("holdingpoleee")
         if self.poleNode != []:
             self.__dropPole()
         np = NodePath('pole-holder')
@@ -315,6 +320,8 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
         self.pole.reparentTo(self.poleNode[0])
 
     def __dropPole(self):
+        self.notify.debug("dropping polel")
+        assert self.notify.debugStateCall(self)
         self.__hideBob()
         self.__hideLine()
         if self.pole != None:
@@ -327,6 +334,8 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
         return
 
     def __removePole(self):
+        assert self.notify.debugStateCall(self)
+        self.notify.debug("remobing polees")
         self.pole.removeNode()
         self.poleNode = []
         self.ptop.removeNode()
@@ -335,6 +344,7 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
         return
 
     def __showLineWaiting(self):
+        assert self.notify.debugStateCall(self)
         self.line.setup(4, ((None, (0, 0, 0)),
          (None, (0, -2, -4)),
          (self.bob, (0, -1, 0)),
@@ -344,22 +354,26 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
         return
 
     def __showLineCasting(self):
+        assert self.notify.debugStateCall(self)
         self.line.setup(2, ((None, (0, 0, 0)), (self.bob, (0, 0, 0))))
         self.line.ropeNode.setBounds(self.lineSphere)
         self.line.reparentTo(self.ptop)
         return
 
     def __showLineReeling(self):
+        assert self.notify.debugStateCall(self)
         self.line.setup(2, ((None, (0, 0, 0)), (self.bob, (0, 0, 0))))
         self.line.ropeNode.setBounds(self.lineSphere)
         self.line.reparentTo(self.ptop)
         return
 
     def __hideLine(self):
+        assert self.notify.debugStateCall(self)
         if self.line:
             self.line.detachNode()
 
     def __showBobFloat(self):
+        assert self.notify.debugStateCall(self)
         self.__hideBob()
         self.bob.reparentTo(self.angleNP)
         self.ripples.reparentTo(self.angleNP)
@@ -878,6 +892,7 @@ class DistributedFishingSpot(DistributedObject.DistributedObject):
         self.arrow.hide()
 
     def enterLocalCasting(self):
+        
         if self.power == 0.0 and len(self.av.fishCollection) == 0:
             self.__showHowTo(TTLocalizer.FishingHowToFailed)
             if self.castTrack:

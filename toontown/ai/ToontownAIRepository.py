@@ -8,6 +8,7 @@ from otp.distributed.OtpDoGlobals import *
 from toontown.ai.HolidayManagerAI import HolidayManagerAI
 from toontown.ai.NewsManagerAI import NewsManagerAI
 from toontown.ai.WelcomeValleyManagerAI import WelcomeValleyManagerAI
+from toontown.fishing.FishManagerAI import FishManagerAI
 from toontown.building.DistributedTrophyMgrAI import DistributedTrophyMgrAI
 from toontown.catalog.CatalogManagerAI import CatalogManagerAI
 from toontown.coghq.CogSuitManagerAI import CogSuitManagerAI
@@ -37,6 +38,7 @@ from toontown.pets.PetManagerAI import PetManagerAI
 from toontown.quest.QuestManagerAI import QuestManagerAI
 from toontown.racing import RaceGlobals
 from toontown.fishing.DistributedFishingPondAI import DistributedFishingPondAI
+from toontown.safezone.DistributedFishingSpotAI import DistributedFishingSpotAI
 from toontown.racing.DistributedLeaderBoardAI import DistributedLeaderBoardAI
 from toontown.racing.DistributedRacePadAI import DistributedRacePadAI
 from toontown.racing.DistributedStartingBlockAI import DistributedStartingBlockAI
@@ -94,6 +96,7 @@ class ToontownAIRepository(ToontownInternalRepository):
         self.safeZoneManager = None
         self.magicWordManager = None
         self.partyManager = None
+        self.fishManager = None
         self.zoneTable = {}
         self.dnaStoreMap = {}
         self.dnaDataMap = {}
@@ -180,6 +183,8 @@ class ToontownAIRepository(ToontownInternalRepository):
 
         # Create our Cog suit manager...
         self.cogSuitMgr = CogSuitManagerAI(self)
+
+        self.fishManager = FishManagerAI(self)
 
     def createGlobals(self):
         """
@@ -385,7 +390,7 @@ class ToontownAIRepository(ToontownInternalRepository):
 
         if "fishing_pond" in dnaData.getName():
             fishingPondGroups.append(dnaData)
-            pond = DistributedFishingPondAI(self)
+            pond = DistributedFishingPondAI(self, area)
             pond.setArea(area)
             pond.generateWithRequired(zoneId)
             fishingPonds.append(pond)
@@ -402,8 +407,22 @@ class ToontownAIRepository(ToontownInternalRepository):
 
         return fishingPonds, fishingPondGroups
 
-    def findFishingSpots(self, dnaData, pond):
-        return []  # TODO
+    def findFishingSpots(self, dnaPondGroup, distPond):
+        fishingSpots = []
+        for i in range(dnaPondGroup.getNumChildren()):
+            dnaGroup = dnaPondGroup.at(i)
+            if ((isinstance(dnaGroup, DNAProp)) and 
+                "fishing_spot" in dnaGroup.getCode()):
+                # Here's a fishing spot!
+                pos = dnaGroup.getPos()
+                hpr = dnaGroup.getHpr()
+                fs = DistributedFishingSpotAI(
+                     self, distPond, pos[0], pos[1], pos[2], hpr[0], hpr[1], hpr[2])
+                fs.generateWithRequired(distPond.zoneId)
+                fishingSpots.append(fs)
+            else:
+                self.notify.debug("Found dnaGroup that is not a fishing_spot under a pond group")
+        return fishingSpots
 
     def findPartyHats(self, dnaData, zoneId):
         return []  # TODO
@@ -506,3 +525,24 @@ class ToontownAIRepository(ToontownInternalRepository):
     def setupFiles(self):
         if not os.path.exists(self.dataFolder):
             os.mkdir(self.dataFolder)
+
+    def handleAvCatch(self, avId, zoneId, catch):
+        """
+        avId - ID of avatar to update
+        zoneId - zoneId of the pond the catch was made in.
+                This is used by the BingoManagerAI to
+                determine which PBMgrAI needs to update
+                the catch.
+        catch - a fish tuple of (genus, species)
+        returns: None
+        
+        This method instructs the BingoManagerAI to
+        tell the appropriate PBMgrAI to update the
+        catch of an avatar at the particular pond. This
+        method is called in the FishManagerAI's
+        RecordCatch method.
+        """
+        # Guard for publish
+        if simbase.wantBingo:
+            if self.bingoMgr:
+                self.bingoMgr.setAvCatchForPondMgr(avId, zoneId, catch)
